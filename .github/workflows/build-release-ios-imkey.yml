@@ -2,8 +2,9 @@ name: Build Release IOS imKey
 
 on:
   push:
-    tags:
-    - 'v*'
+    branches: [ "main" ]
+#     tags:
+#     - 'v*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -32,11 +33,12 @@ jobs:
 
     - name: Install Rust
       run: |
-        rustup install 1.47.0
-        rustup default 1.47.0-x86_64-apple-darwin
+        rustup toolchain install nightly-2022-10-31
+        rustup default nightly-2022-10-31-x86_64-apple-darwin
         rustup target add aarch64-apple-ios x86_64-apple-ios
         rustup show
         cargo install cargo-lipo
+        brew install protobuf
 
     - name: Build
       run: | 
@@ -51,6 +53,16 @@ jobs:
         cargo lipo
         
         LIBS=./mobile-sdk/imKeyCoreX/imKeyCoreX
+        echo aaaaaaa
+        ls
+        cd ./target/
+        echo aaaaaa
+        ls
+        cd ./universal/
+        echo cccccccc
+        ls
+        cd ./release/
+        echo dddddddd
         cp ./target/universal/release/libconnector.a $LIBS/libconnector.a
         cp ./target/universal/release/libtcx.a $LIBS/libtcx.a
         cp ./target/connector.h $LIBS/connector.h
