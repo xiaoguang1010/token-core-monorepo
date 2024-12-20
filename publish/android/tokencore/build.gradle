@@ -5,6 +5,7 @@ plugins {
 android {
     compileSdk 30
 
+    namespace "im.token.libs.tokencore"
     defaultConfig {
         minSdk 19
         targetSdk 30
@@ -20,14 +21,8 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
 }
 
 dependencies {
 
 }
-
-apply from: "./maven-push.gradle"
