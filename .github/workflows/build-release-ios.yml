@@ -14,7 +14,7 @@ permissions:
 jobs:
   build:
     name: Build iOS Release
-    if: github.event.review.state == 'approved'
+    # if: github.event.review.state == 'approved'
     runs-on: macos-15
     steps:
       - name: Get the latest commit SHA
