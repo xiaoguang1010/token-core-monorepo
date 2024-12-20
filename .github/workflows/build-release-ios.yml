@@ -17,19 +17,19 @@ jobs:
     # if: github.event.review.state == 'approved'
     runs-on: macos-15
     steps:
-      - name: Get the latest commit SHA
-        id: sha
-        uses: actions/github-script@v6
-        with:
-          result-encoding: string
-          script: |
-            const { owner, repo, number } = context.issue
-            const pr = await github.rest.pulls.get({
-              owner,
-              repo,
-              pull_number: number,
-            })
-            return pr.data.head.sha
+      # - name: Get the latest commit SHA
+      #   id: sha
+      #   uses: actions/github-script@v6
+      #   with:
+      #     result-encoding: string
+      #     script: |
+      #       const { owner, repo, number } = context.issue
+      #       const pr = await github.rest.pulls.get({
+      #         owner,
+      #         repo,
+      #         pull_number: number,
+      #       })
+      #       return pr.data.head.sha
 
       - name: Checkout repository
         uses: actions/checkout@v3
