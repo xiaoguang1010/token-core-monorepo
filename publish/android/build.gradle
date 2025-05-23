@@ -95,6 +95,14 @@ jreleaser {
             version = this.version
         }
     }
+
+    signing {
+        active = 'ALWAYS'
+        armored = true
+        publicKey = '{{jreleaser.gpg.public.key}}'
+        secretKey = '{{jreleaser.gpg.secret.key}}'
+        passphrase = '{{jreleaser.gpg.passphrase}}'
+    }
     
     deploy {
         maven {
@@ -114,13 +122,6 @@ jreleaser {
                     // publication = 'Production'
                     // 是否要签名，默认为true
                     sign = true
-                    // 使用GPG签名
-                    gpg {
-                        // 使用环境变量中定义的GPG密钥对
-                        publicKey = '{{jreleaser.gpg.public.key}}'
-                        secretKey = '{{jreleaser.gpg.secret.key}}'
-                        passphrase = '{{jreleaser.gpg.passphrase}}'
-                    }
                 }
             }
         }
