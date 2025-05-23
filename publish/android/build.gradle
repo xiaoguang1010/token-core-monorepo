@@ -111,7 +111,7 @@ jreleaser {
                     releaseRepository = true
                     stagingRepositories = ['build/staging-deploy']
                     // 要发布的产物
-                    publication = 'Production'
+                    // publication = 'Production'
                     // 是否要签名，默认为true
                     sign = true
                     // 使用GPG签名
