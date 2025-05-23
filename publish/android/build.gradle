@@ -1,95 +1,162 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.2'
+name: Build Android Release
 
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
-}
+on:
+  workflow_dispatch:
 
-plugins {
-    id("io.github.gradle-nexus.publish-plugin") version "1.3.0"
-    id("maven-publish")
-    id("signing")
-}
+env:
+  CARGO_TERM_COLOR: always
+  JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JRELEASER_GPG_PASSPHRASE: ${{ secrets.SIGNING_SECRET_JRELEASER }}
+  JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+  JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+  JRELEASER_NEXUS2_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+  JRELEASER_NEXUS2_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
-version System.getenv("VERSION") ?: project['version']
-group 'io.github.consenlabs.android'
+jobs:
+  build:
+    name: Build Android Release
+    if: github.event.review.state == 'approved'
+    runs-on: macos-13
+    steps:
+      - name: Get the latest commit SHA
+        id: sha
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            const { owner, repo, number } = context.issue
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: number,
+            })
+            return pr.data.head.sha
 
-afterEvaluate {
-    publishing {
-        publications {
-            Production(MavenPublication) {
-                artifact("tokencore/build/outputs/aar/tokencore-release.aar")
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ steps.sha.outputs.result }}
+          fetch-depth: 5
 
-                groupId this.group
-                artifactId 'token-core'
-                version this.version
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.rustup
+            target
+          key: ${{ runner.os }}-nightly
 
-                pom {
-                    name = "token-core"
-                    description = "a android library for web3"
-                    url = "https://github.com/consenlabs/token-core-monorepo"
-                    licenses {
-                        license {
-                            name = "Apache License 2.0"
-                            url = "https://github.com/consenlabs/token-core-monorepo/blob/main/LICENSE"
-                        }
-                    }
-                    developers {
-                        developer {
-                            id = "consenlabs"
-                            name = "Consenlabs"
-                            email = "xuyunzhao@token.im"
-                        }
-                    }
-                    scm {
-                        connection = "scm:git:github.com/consenlabs/token-core-monorepo"
-                        developerConnection = "scm:git:github.com/consenlabs/token-core-monorepo"
-                        url = "https://github.com/consenlabs/token-core-monorepo"
-                    }
+      - name: Install Rust
+        run: |
+          rustup toolchain install nightly-2022-10-31
+          rustup default nightly-2022-10-31-x86_64-apple-darwin
+          rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+          rustup show
+
+      # - name: Install dependent
+      #   run: |
+      #    sudo apt-get install -y libusb-dev libusb-1.0-0-dev libftdi1-dev libudev-dev
+      #    sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+      - name: Install dependency
+        run: |
+          brew install protobuf
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Install Android Tools
+        run: sdkmanager "build-tools;29.0.3" "platforms;android-31" "ndk;25.2.9519653"
+
+      - name: Configure Rust Config File
+        run: |
+          echo '[target.armv7-linux-androideabi]' >> ~/.cargo/config
+          echo 'ar = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"' >> ~/.cargo/config
+          echo 'linker = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/armv7a-linux-androideabi22-clang"' >> ~/.cargo/config
+          echo '[target.aarch64-linux-android]' >> ~/.cargo/config
+          echo 'ar = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"' >> ~/.cargo/config
+          echo 'linker = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android29-clang"' >> ~/.cargo/config
+          echo '[target.i686-linux-android]' >> ~/.cargo/config
+          echo 'ar = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"' >> ~/.cargo/config
+          echo 'linker = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/i686-linux-android29-clang"' >> ~/.cargo/config
+          echo '[target.x86_64-linux-android]' >> ~/.cargo/config
+          echo 'ar = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"' >> ~/.cargo/config
+          echo 'linker = "/Users/runner/Library/Android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/darwin-x86_64/bin/x86_64-linux-android29-clang"' >> ~/.cargo/config
+          cat ~/.cargo/config
+
+      - name: Build TCX And IKC
+        run: |
+          pushd ${{github.workspace}}/script
+          ./build-android.sh
+          popd
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 7.0.1
+
+      - name: Read VERSION file
+        id: getversion
+        run: echo "version=$(cat VERSION)+$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Get commits
+        id: getcommits
+        shell: bash
+        run: |
+          OUTPUT="$(git log -n 5 --pretty=format:"%s")"
+          echo ::set-output name=commits::"${OUTPUT}"
+
+      - name: Build AAR
+        id: build
+        run: |
+          pushd ${{github.workspace}}/publish/android
+          ./gradlew assemble
+          echo "tokencore_sha256=$(shasum -a 256 ${{github.workspace}}/publish/android/tokencore/build/outputs/aar/tokencore-release.aar | awk '{ print $1 }')" >> $GITHUB_OUTPUT
+          echo "tokencore-release.aar sha256: $(shasum -a 256 ${{github.workspace}}/publish/android/tokencore/build/outputs/aar/tokencore-release.aar | awk '{ print $1 }')"
+          popd
+
+      - name: Publish with JReleaser
+        id: publish
+        run: |
+          pushd ${{github.workspace}}/publish/android
+          VERSION=${{steps.getversion.outputs.version}} ./gradlew jreleaserDeploy
+          popd
+
+      - name: JReleaser output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jreleaser-output
+          path: |
+            ${{github.workspace}}/publish/android/build/jreleaser/trace.log
+            ${{github.workspace}}/publish/android/build/jreleaser/output.properties
+
+      - name: Send custom JSON data to Slack workflow
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          # For posting a rich message using Block Kit
+          payload: |
+            {
+              "text": "New build of android-token-core: ${{ job.status }}\nVERSION: ${{ steps.getversion.outputs.version }}\nTokenCore Sha256: ${{ steps.build.outputs.tokencore_sha256 }}\nCheck more: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}\nCommits:\n${{ steps.getcommits.outputs.commits }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "New build of android-token-core: ${{ job.status }}\nVERSION: ${{ steps.getversion.outputs.version }}\nTokenCore Sha256: ${{ steps.build.outputs.tokencore_sha256 }}\nCheck more: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}\nCommits:\n${{ steps.getcommits.outputs.commits }}"
+                  }
                 }
-
+              ]
             }
-        }
-    }
-
-    signing {
-        //make signing required unless for SNAPSHOT releases or if signing is explicitly skipped
-        required { !project.version.endsWith("-SNAPSHOT") && !project.hasProperty("skipSigning") }
-
-        //look for property 'signingKey'
-        if (project.findProperty("signingKey")) {
-            //If required, read a sub-key specified by its ID in property signingKeyId
-            //def signingKeyId = findProperty("signingKeyId")
-            //read property 'signingKey'
-            def signingKey = findProperty("signingKey")
-            //read property 'signingPassword'
-            def signingPassword = findProperty("signingPassword")
-            //Select to use in-memory ascii-armored keys
-            useInMemoryPgpKeys(signingKey, signingPassword)
-            //Only if also using signingKeyId
-            //useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-
-            //Apply signing to publication identity 'publishing.publications.maven'
-            sign publishing.publications.Production
-        } else {
-            sign publishing.publications.Production
-            // println 'WARNING: No property \'signingKey\' found. Artifact signing will be skipped.'
-        }
-    }
-}
-
-nexusPublishing {
-    repositories {
-        sonatype {  //only for users registered in Sonatype after 24 Feb 2021
-            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
-        }
-    }
-}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
