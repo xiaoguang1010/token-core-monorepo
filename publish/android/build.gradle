@@ -86,7 +86,7 @@ afterEvaluate {
 
 jreleaser {
     gitRootSearch = true
-    gitRootDirectory = new File(project.rootDir, "../..")  // 指向项目根目录
+    gitRootDirectory = new File("${project.projectDir}/../..")  // 使用 projectDir 而不是 rootDir
 
     project {
         name = 'token-core'
