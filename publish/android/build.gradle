@@ -85,6 +85,9 @@ afterEvaluate {
 }
 
 jreleaser {
+    gitRootSearch = true
+    gitRootDirectory = new File(project.rootDir, "../..")  // 指向项目根目录
+
     project {
         name = 'token-core'
         description = 'A android library for web3'
