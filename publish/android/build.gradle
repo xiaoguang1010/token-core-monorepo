@@ -99,9 +99,6 @@ jreleaser {
         }
     }
     
-    gitRootSearch = true
-    gitRootDirectory = project.rootDir.parentFile 
-    
     signing {
         active = 'ALWAYS'
         armored = true
