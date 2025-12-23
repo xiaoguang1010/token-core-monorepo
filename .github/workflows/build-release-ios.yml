@@ -1,8 +1,7 @@
 name: Build iOS Release
 
 on:
-  pull_request_review:
-    types: [submitted]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,27 +12,14 @@ permissions:
 jobs:
   build:
     name: Build iOS Release
-    if: github.event.review.state == 'approved'
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
-      - name: Get the latest commit SHA
-        id: sha
-        uses: actions/github-script@v6
-        with:
-          result-encoding: string
-          script: |
-            const { owner, repo, number } = context.issue
-            const pr = await github.rest.pulls.get({
-              owner,
-              repo,
-              pull_number: number,
-            })
-            return pr.data.head.sha
+
 
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          ref: ${{ steps.sha.outputs.result }}
+
           fetch-depth: 5
 
       - name: Cache
@@ -115,68 +101,68 @@ jobs:
           cp -R $BUILD_DIR/$CONFIGURATION-iphoneos/$PROJECT_NAME_IKC.framework $UNIVERSAL_OUTPUTFOLDER/
           lipo -create -output $UNIVERSAL_OUTPUTFOLDER/$PROJECT_NAME_IKC.framework/$PROJECT_NAME_IKC $BUILD_PRODUCTS/Debug-iphonesimulator/$PROJECT_NAME_IKC.framework/$PROJECT_NAME_IKC $BUILD_DIR/$CONFIGURATION-iphoneos/$PROJECT_NAME_IKC.framework/$PROJECT_NAME_IKC
 
-          cp -R $UNIVERSAL_OUTPUTFOLDER/ ../../ios-release
-          rm -rf $UNIVERSAL_OUTPUTFOLDER 
-          popd
+      #     cp -R $UNIVERSAL_OUTPUTFOLDER/ ../../ios-release
+      #     rm -rf $UNIVERSAL_OUTPUTFOLDER 
+      #     popd
 
-          pushd ./imkey-core/ios-release
-          PACKAGE_NAME=ios-ikc-${{ steps.getversion.outputs.version }}.zip
-          zip -q -r $PACKAGE_NAME .
-          echo "imkeycorex_sha256=$(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')" >> $GITHUB_OUTPUT
-          echo "imKeyCoreX sha256: $(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')"
-          cp $PACKAGE_NAME ../../
-          popd
+      #     pushd ./imkey-core/ios-release
+      #     PACKAGE_NAME=ios-ikc-${{ steps.getversion.outputs.version }}.zip
+      #     zip -q -r $PACKAGE_NAME .
+      #     echo "imkeycorex_sha256=$(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')" >> $GITHUB_OUTPUT
+      #     echo "imKeyCoreX sha256: $(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')"
+      #     cp $PACKAGE_NAME ../../
+      #     popd
 
-          pushd ./token-core/tcx-examples/TokenCoreX       
-          mkdir -p $BUILD_DIR
-          UNIVERSAL_OUTPUTFOLDER=$BUILD_DIR/$CONFIGURATION-Universal
-          mkdir -p $UNIVERSAL_OUTPUTFOLDER
+      #     pushd ./token-core/tcx-examples/TokenCoreX       
+      #     mkdir -p $BUILD_DIR
+      #     UNIVERSAL_OUTPUTFOLDER=$BUILD_DIR/$CONFIGURATION-Universal
+      #     mkdir -p $UNIVERSAL_OUTPUTFOLDER
 
-          xcodebuild -target $PROJECT_NAME_TCX ONLY_ACTIVE_ARCH=NO -configuration $CONFIGURATION -sdk iphoneos BUILD_DIR=$BUILD_DIR BUILD_ROOT=$BUILD_ROOT build
-          xcodebuild -target $PROJECT_NAME_TCX -configuration Debug -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO BUILD_DIR=$BUILD_DIR BUILD_ROOT=$BUILD_ROOT EXCLUDED_ARCHS=arm64 build      
-          cp -R $BUILD_DIR/$CONFIGURATION-iphoneos/$PROJECT_NAME_TCX.framework $UNIVERSAL_OUTPUTFOLDER/
-          lipo -create -output $UNIVERSAL_OUTPUTFOLDER/$PROJECT_NAME_TCX.framework/$PROJECT_NAME_TCX $BUILD_PRODUCTS/Debug-iphonesimulator/$PROJECT_NAME_TCX.framework/$PROJECT_NAME_TCX $BUILD_DIR/$CONFIGURATION-iphoneos/$PROJECT_NAME_TCX.framework/$PROJECT_NAME_TCX
+      #     xcodebuild -target $PROJECT_NAME_TCX ONLY_ACTIVE_ARCH=NO -configuration $CONFIGURATION -sdk iphoneos BUILD_DIR=$BUILD_DIR BUILD_ROOT=$BUILD_ROOT build
+      #     xcodebuild -target $PROJECT_NAME_TCX -configuration Debug -sdk iphonesimulator ONLY_ACTIVE_ARCH=NO BUILD_DIR=$BUILD_DIR BUILD_ROOT=$BUILD_ROOT EXCLUDED_ARCHS=arm64 build      
+      #     cp -R $BUILD_DIR/$CONFIGURATION-iphoneos/$PROJECT_NAME_TCX.framework $UNIVERSAL_OUTPUTFOLDER/
+      #     lipo -create -output $UNIVERSAL_OUTPUTFOLDER/$PROJECT_NAME_TCX.framework/$PROJECT_NAME_TCX $BUILD_PRODUCTS/Debug-iphonesimulator/$PROJECT_NAME_TCX.framework/$PROJECT_NAME_TCX $BUILD_DIR/$CONFIGURATION-iphoneos/$PROJECT_NAME_TCX.framework/$PROJECT_NAME_TCX
 
-          cp -R $UNIVERSAL_OUTPUTFOLDER/ ../../ios-release
-          rm -rf $UNIVERSAL_OUTPUTFOLDER 
-          popd
+      #     cp -R $UNIVERSAL_OUTPUTFOLDER/ ../../ios-release
+      #     rm -rf $UNIVERSAL_OUTPUTFOLDER 
+      #     popd
 
-          pushd ./token-core/ios-release
-          PACKAGE_NAME=ios-tcx-${{ steps.getversion.outputs.version }}.zip
-          zip -q -r $PACKAGE_NAME .
-          echo "tokencorex_sha256=$(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')" >> $GITHUB_OUTPUT
-          echo "TokenCoreX sha256: $(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')"
-          cp $PACKAGE_NAME ../../
-          popd
+      #     pushd ./token-core/ios-release
+      #     PACKAGE_NAME=ios-tcx-${{ steps.getversion.outputs.version }}.zip
+      #     zip -q -r $PACKAGE_NAME .
+      #     echo "tokencorex_sha256=$(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')" >> $GITHUB_OUTPUT
+      #     echo "TokenCoreX sha256: $(shasum -a 256 $PACKAGE_NAME | awk '{ print $1 }')"
+      #     cp $PACKAGE_NAME ../../
+      #     popd
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: "Release ${{ steps.getversion.outputs.version }}"
-          tag_name: "v${{ steps.getversion.outputs.version }}"
-          generate_release_notes: true
-          files: |
-            ios-ikc-${{ steps.getversion.outputs.version }}.zip
-            ios-tcx-${{ steps.getversion.outputs.version }}.zip
+      # - name: Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     name: "Release ${{ steps.getversion.outputs.version }}"
+      #     tag_name: "v${{ steps.getversion.outputs.version }}"
+      #     generate_release_notes: true
+      #     files: |
+      #       ios-ikc-${{ steps.getversion.outputs.version }}.zip
+      #       ios-tcx-${{ steps.getversion.outputs.version }}.zip
 
-      - name: Send custom JSON data to Slack workflow
-        id: slack
-        uses: slackapi/slack-github-action@v1.23.0
-        with:
-          # For posting a rich message using Block Kit
-          payload: |
-            {
-              "text": "New build of ios-token-core: ${{ job.status }}\nVERSION: ${{ steps.getversion.outputs.version }}\nimKey Core X Sha256: ${{ steps.build.outputs.imkeycorex_sha256 }}\nToken Core X Sha256: ${{ steps.build.outputs.tokencorex_sha256 }}\nCheck more: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}\nCommits:\n${{ steps.getcommits.outputs.commits }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "New build of ios-token-core: ${{ job.status }}\nVERSION: ${{ steps.getversion.outputs.version }}\nimKey Core X Sha256: ${{ steps.build.outputs.imkeycorex_sha256 }}\nToken Core X Sha256: ${{ steps.build.outputs.tokencorex_sha256 }}\nCheck more: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}\nCommits:\n${{ steps.getcommits.outputs.commits }}"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      # - name: Send custom JSON data to Slack workflow
+      #   id: slack
+      #   uses: slackapi/slack-github-action@v1.23.0
+      #   with:
+      #     # For posting a rich message using Block Kit
+      #     payload: |
+      #       {
+      #         "text": "New build of ios-token-core: ${{ job.status }}\nVERSION: ${{ steps.getversion.outputs.version }}\nimKey Core X Sha256: ${{ steps.build.outputs.imkeycorex_sha256 }}\nToken Core X Sha256: ${{ steps.build.outputs.tokencorex_sha256 }}\nCheck more: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}\nCommits:\n${{ steps.getcommits.outputs.commits }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "New build of ios-token-core: ${{ job.status }}\nVERSION: ${{ steps.getversion.outputs.version }}\nimKey Core X Sha256: ${{ steps.build.outputs.imkeycorex_sha256 }}\nToken Core X Sha256: ${{ steps.build.outputs.tokencorex_sha256 }}\nCheck more: ${{ github.event.pull_request.html_url || github.event.head_commit.url }}\nCommits:\n${{ steps.getcommits.outputs.commits }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+      #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
